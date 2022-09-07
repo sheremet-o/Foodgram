@@ -51,7 +51,7 @@ class CustomUser(AbstractUser):
         return self.is_superuser or self.role == self.ADMIN
 
 
-class Subsctiption(models.Model):
+class Subscription(models.Model):
     user = models.ForeignKey(
         CustomUser,
         on_delete=models.CASCADE,
@@ -76,4 +76,4 @@ class Subsctiption(models.Model):
         )
 
     def __str__(self):
-        return f'{self.user} подпписан на {self.author}'
+        return f'{self.user} подписан на {self.author}'
