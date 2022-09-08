@@ -1,19 +1,20 @@
 from django.contrib import admin
 
-from .models import Tag, Ingredient, Recipe, RecipeIngredients, \
-        Favorite, ShoppingCart
+
+from .models import Favorite, Ingredient, Recipe, RecipeIngredients, \
+        ShoppingCart, Tag
 
 
 @admin.register(Tag)
-class TagAdmin(admin.ModelAdmin):
+class TagsAdmin(admin.ModelAdmin):
     list_display = (
         'id',
         'name',
         'color',
         'slug',
     )
-    search_fields = ['name']
-    ordering = ['name']
+    search_fields = ('name',)
+    ordering = ('color',)
 
 
 @admin.register(Ingredient)
@@ -23,8 +24,7 @@ class IngredientAdmin(admin.ModelAdmin):
         'name',
         'measurement_unit',
     )
-    search_fields = ['name']
-    ordering = ['name']
+    search_fields = ('name',)
 
 
 @admin.register(RecipeIngredients)
@@ -35,10 +35,7 @@ class RecipeIngredientsAdmin(admin.ModelAdmin):
         'ingredient',
         'amount',
     )
-    list_filter = ('id',
-                   'recipe',
-                   'ingredient',
-                   )
+    list_filter = ('id', 'recipe', 'ingredient')
 
 
 @admin.register(Recipe)
