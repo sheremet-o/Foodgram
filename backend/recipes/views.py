@@ -15,7 +15,7 @@ from .serializers import AddRecipeSerializer, IngredientSerializer, \
 from .utils import get_list_ingredients
 
 
-class RecipesViewSet(viewsets.ModelViewSet):
+class RecipeViewSet(viewsets.ModelViewSet):
     queryset = Recipe.objects.all()
     serializer_classes = {
         'retrieve': ShortRecipeSerializer,
