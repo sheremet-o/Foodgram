@@ -1,19 +1,15 @@
-from django.http import HttpResponse
-from django.template.loader import render_to_string
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
-from weasyprint import HTML
-
 from foodgram.pagination import FoodgramPaginator
 from .filters import IngredientFilter, RecipeFilter
 from .models import (Ingredient, Recipe, Tag)
 from .permissions import IsAdminOrReadOnly, IsAuthorOrAdmin
 from .serializers import TagSerializer, IngredientSerializer, \
         AddRecipeSerializer,  ShortRecipeSerializer, RecipeSerializer
-from utils import get_list_ingredients
+from .utils import get_list_ingredients, render_to_pdf
 
 
 class TagViewSet(viewsets.ReadOnlyModelViewSet):
@@ -77,11 +73,11 @@ class RecipesViewSet(viewsets.ModelViewSet):
     @action(detail=False)
     def download_shopping_cart(self, request):
         ingredients = get_list_ingredients(request.user)
-        template = render_to_string('recipes/pdf_template.html',
-                                    {'ingredients': ingredients})
-        html = HTML(string=template)
-        result = html.write_pdf()
-        response = HttpResponse(result, content_type='application/pdf;')
-        response['Content-Disposition'] = 'inline; filename=shopping_list.pdf'
-        response['Content-Transfer-Encoding'] = 'binary'
-        return response
+        template_name = 'recipes/pdf_template.html'
+
+        return render_to_pdf(
+            template_name,
+            {
+                'ingredients': ingredients,
+            },
+        )
