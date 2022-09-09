@@ -1,3 +1,4 @@
+from django.db.models import F
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
@@ -5,7 +6,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from foodgram.pagination import FoodgramPaginator
 from .filters import IngredientFilter, RecipeFilter
-from .models import (Ingredient, Recipe, Tag)
+from .models import Ingredient, Recipe, RecipeIngredients, Tag
 from .permissions import IsAdminOrReadOnly, IsAuthorOrAdmin
 from .serializers import TagSerializer, IngredientSerializer, \
         AddRecipeSerializer,  ShortRecipeSerializer, RecipeSerializer
@@ -38,6 +39,37 @@ class RecipesViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_class = RecipeFilter
     pagination_class = FoodgramPaginator
+
+    @staticmethod
+    def add_ingredients(ingredients, recipe):
+        for ingredient in ingredients:
+            ingredient_id = ingredient['id']
+            amount = ingredient['amount']
+            if RecipeIngredients.objects.filter(
+                    recipe=recipe, ingredient=ingredient_id).exists():
+                amount += F('amount')
+            RecipeIngredients.objects.bulk_create(
+                recipe=recipe, ingredient=ingredient_id, amount=amount
+            )
+
+    def create(self, validated_data):
+        author = self.context.get('request').user
+        tags_data = validated_data.pop('tags')
+        ingredients_data = validated_data.pop('ingredients')
+        image = validated_data.pop('image')
+        recipe = Recipe.objects.create(image=image, author=author,
+                                       **validated_data)
+        self.add_ingredients(ingredients_data, recipe)
+        recipe.tags.set(tags_data)
+        return recipe
+
+    def update(self, recipe, validated_data):
+        ingredients = validated_data.pop('ingredients')
+        tags = validated_data.pop('tags')
+        RecipeIngredients.objects.filter(recipe=recipe).delete()
+        self.add_ingredients(ingredients, recipe)
+        recipe.tags.set(tags)
+        return super().update(recipe, validated_data)
 
     def get_serializer_class(self):
         return self.serializer_classes.get(self.action,

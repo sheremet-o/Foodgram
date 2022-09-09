@@ -2,7 +2,6 @@ import base64
 
 from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
-from django.db.models import F
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
@@ -151,38 +150,6 @@ class AddRecipeSerializer(serializers.ModelSerializer):
                 'Время приготовления должно быть больше нуля'
             )
         return value
-
-    @staticmethod
-    def add_ingredients(ingredients, recipe):
-        for ingredient in ingredients:
-            ingredient_id = ingredient['id']
-            amount = ingredient['amount']
-            if RecipeIngredients.objects.filter(
-                    recipe=recipe, ingredient=ingredient_id).exists():
-                amount += F('amount')
-            RecipeIngredients.objects.update_or_create(
-                recipe=recipe, ingredient=ingredient_id,
-                defaults={'amount': amount}
-            )
-
-    def create(self, validated_data):
-        author = self.context.get('request').user
-        tags_data = validated_data.pop('tags')
-        ingredients_data = validated_data.pop('ingredients')
-        image = validated_data.pop('image')
-        recipe = Recipe.objects.create(image=image, author=author,
-                                       **validated_data)
-        self.add_ingredients(ingredients_data, recipe)
-        recipe.tags.set(tags_data)
-        return recipe
-
-    def update(self, recipe, validated_data):
-        ingredients = validated_data.pop('ingredients')
-        tags = validated_data.pop('tags')
-        RecipeIngredients.objects.filter(recipe=recipe).delete()
-        self.add_ingredients(ingredients, recipe)
-        recipe.tags.set(tags)
-        return super().update(recipe, validated_data)
 
     def to_representation(self, recipe):
         data = RecipeSerializer(

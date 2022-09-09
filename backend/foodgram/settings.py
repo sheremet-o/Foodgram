@@ -9,7 +9,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 SECRET_KEY = os.getenv('SECRET_KEY', default='django-insecure-*vza3kv&$m0a55y2^ho==@48jw$faxbdopn=6r#r7vjzm^3zpt')
 
-DEBUG = True
+DEBUG = os.getenv('DEBUG_MODE')
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
