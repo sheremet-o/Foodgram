@@ -1,115 +1,108 @@
-from django.db.models import F
+from django.db.models import Sum
+from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import permissions, status, viewsets
+from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.validators import ValidationError
+
+from .filters import IngredientFilter, TagFilter
+from .models import (Favorite, Ingredient, IngredientsInRecipe, Recipe,
+                     ShoppingCart, Tag)
 from foodgram.pagination import FoodgramPaginator
-from .filters import IngredientFilter, RecipeFilter
-from .models import Ingredient, Recipe, RecipeIngredients, Tag
-from .permissions import IsAdminOrReadOnly, IsAuthorOrAdmin
-from .serializers import TagSerializer, IngredientSerializer, \
-        AddRecipeSerializer,  ShortRecipeSerializer, RecipeSerializer
-from .utils import get_list_ingredients, render_to_pdf
+from .permissions import IsOwnerOrReadOnly
+from .serializers import (AddRecipeSerializer, IngredientSerializer,
+                          RecipeSerializer, ShortRecipeSerializer,
+                          TagSerializer)
+from .utils import convert_txt
 
 
-class TagViewSet(viewsets.ReadOnlyModelViewSet):
+class TagViewSet(
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    viewsets.GenericViewSet
+):
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
-    pagination_class = None
-    permission_classes = (IsAdminOrReadOnly,)
+    permission_classes = (AllowAny,)
 
 
-class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
+class IngredientViewSet(
+    mixins.RetrieveModelMixin,
+    mixins.ListModelMixin,
+    viewsets.GenericViewSet
+):
     queryset = Ingredient.objects.all()
     serializer_class = IngredientSerializer
-    pagination_class = None
-    filter_backends = (DjangoFilterBackend,)
+    permission_classes = (AllowAny,)
     filterset_class = IngredientFilter
 
 
-class RecipesViewSet(viewsets.ModelViewSet):
+class RecipeViewSet(viewsets.ModelViewSet):
     queryset = Recipe.objects.all()
-    serializer_classes = {
-        'retrieve': RecipeSerializer,
-        'list': RecipeSerializer,
-    }
-    default_serializer_class = AddRecipeSerializer
-    permission_classes = (IsAuthorOrAdmin,)
-    filter_backends = [DjangoFilterBackend]
-    filterset_class = RecipeFilter
+    permission_classes = (IsOwnerOrReadOnly,)
     pagination_class = FoodgramPaginator
-
-    @staticmethod
-    def add_ingredients(ingredients, recipe):
-        for ingredient in ingredients:
-            ingredient_id = ingredient['id']
-            amount = ingredient['amount']
-            if RecipeIngredients.objects.filter(
-                    recipe=recipe, ingredient=ingredient_id).exists():
-                amount += F('amount')
-            RecipeIngredients.objects.bulk_create(
-                recipe=recipe, ingredient=ingredient_id, amount=amount
-            )
-
-    def create(self, validated_data):
-        author = self.context.get('request').user
-        tags_data = validated_data.pop('tags')
-        ingredients_data = validated_data.pop('ingredients')
-        image = validated_data.pop('image')
-        recipe = Recipe.objects.create(image=image, author=author,
-                                       **validated_data)
-        self.add_ingredients(ingredients_data, recipe)
-        recipe.tags.set(tags_data)
-        return recipe
-
-    def update(self, recipe, validated_data):
-        ingredients = validated_data.pop('ingredients')
-        tags = validated_data.pop('tags')
-        RecipeIngredients.objects.filter(recipe=recipe).delete()
-        self.add_ingredients(ingredients, recipe)
-        recipe.tags.set(tags)
-        return super().update(recipe, validated_data)
+    filter_backends = (DjangoFilterBackend,)
+    filterset_class = TagFilter
 
     def get_serializer_class(self):
-        return self.serializer_classes.get(self.action,
-                                           self.default_serializer_class)
+        if self.action in ('list', 'retrieve'):
+            return RecipeSerializer
+        return AddRecipeSerializer
 
-    def _favorite_shopping_post_delete(self, related_manager):
-        recipe = self.get_object()
-        if self.request.method == 'DELETE':
-            related_manager.get(recipe_id=recipe.id).delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        if related_manager.filter(recipe=recipe).exists():
-            raise ValidationError('Этот рецепт уже есть в избранном')
-        related_manager.create(recipe=recipe)
-        serializer = ShortRecipeSerializer(instance=recipe)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    def perform_create(self, serializer):
+        user = self.request.user
+        serializer.save(author=user)
 
-    @action(detail=True,
-            permission_classes=[permissions.IsAuthenticated],
-            methods=['POST', 'DELETE'], )
+    @action(
+        detail=True,
+        methods=('post', 'delete'),
+        permission_classes=(IsAuthenticated,)
+    )
     def favorite(self, request, pk=None):
-        return self._favorite_shopping_post_delete(
-            request.user.favorite
-        )
+        if request.method == 'POST':
+            return self.add_recipe(Favorite, request, pk)
+        else:
+            return self.delete_recipe(Favorite, request, pk)
 
-    @action(detail=True,
-            permission_classes=[permissions.IsAuthenticated],
-            methods=['POST', 'DELETE'], )
-    def shopping_cart(self, request, pk=None):
-        return self._favorite_shopping_post_delete(
-            request.user.shopping_user
-        )
-
-    @action(detail=False)
+    @action(
+        detail=False,
+        permission_classes=(IsAuthenticated,)
+    )
     def download_shopping_cart(self, request):
-        ingredients = get_list_ingredients(request.user)
-        template_name = 'recipes/pdf_template.html'
+        ingredients = IngredientsInRecipe.objects.filter(
+            recipe__shopping_cart__user=request.user
+        ).values(
+            'ingredient__name', 'ingredient__measurement_unit'
+        ).order_by(
+            'ingredient__name'
+        ).annotate(ingredient_total=Sum('amount'))
+        return convert_txt(ingredients)
 
-        return render_to_pdf(
-            template_name,
-            {
-                'ingredients': ingredients,
-            },
-        )
+    @action(
+        detail=True,
+        methods=('post', 'delete'),
+        permission_classes=(IsAuthenticated,)
+    )
+    def shopping_cart(self, request, pk):
+        if request.method == 'POST':
+            return self.add_recipe(ShoppingCart, request, pk)
+        else:
+            return self.delete_recipe(ShoppingCart, request, pk)
+
+    def add_recipe(self, model, request, pk):
+        recipe = get_object_or_404(Recipe, pk=pk)
+        user = self.request.user
+        if model.objects.filter(recipe=recipe, user=user).exists():
+            raise ValidationError('Рецепт уже добавлен')
+        model.objects.create(recipe=recipe, user=user)
+        serializer = ShortRecipeSerializer(recipe)
+        return Response(data=serializer.data, status=status.HTTP_201_CREATED)
+
+    def delete_recipe(self, model, request, pk):
+        recipe = get_object_or_404(Recipe, pk=pk)
+        user = self.request.user
+        obj = get_object_or_404(model, recipe=recipe, user=user)
+        obj.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

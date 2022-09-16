@@ -14,27 +14,23 @@ Foodgram - «продуктовый помощник». На этом серви
 * Nginx 1.19.3
 * Postgres 12.4
 
-## Команды для запуска приложения в контейнере
+## Запуск приложения в контейнере
 
-1. Запустите docker-compose при помощи команды
-   docker-compose up -d
-    -d позволит запустить docker-compose в фоновом режиме
-2. Создайте суперюзера:
-    docker-compose exec web python manage.py createsuperuser
-3. Запустите приложение:
-    docker-compose exec web python manage.py runserver
+1. Запустите docker-compose при помощи команды  
+`docker-compose up -d`
+2. Соберите статические файлы (статику):  
+`docker-compose exec backend python manage.py collectstatic --no-input`
+3. Примените миграции:  
+`docker-compose exec backend python manage.py makemigrations`
+`docker-compose exec backend python manage.py migrate --no-input`
+4. Создайте суперпользователя:  
+`docker-compose exec backend python manage.py createsuperuser`
+5. При необходимости наполните базу тестовыми данными из backend/data/:  
+`docker-compose exec backend python manage.py load_ingredients`
+6. Запустите приложение  
+`docker-compose exec backend python manage.py runserver`
 
-## Команды для заполнения базы данными
-
-1. Развернуть проект (см. выше).
-2. Войти в админку при помощи логина и пароля суперюзера.
-3. Создать несколько записей.
-4. Создать резервную копию базы:
-    docker-compose exec web python manage.py dumpdata > fixtures.json 
-5. Заполнить базу:
-    docker-compose exec web python manage.py loaddata fixtures.json
-
-## Аутентификация и создание новых пользователей:
+## Аутентификация и создание новых пользователей  
 
 Получение токена (POST).  
 `api/auth/token/login/`
@@ -42,12 +38,12 @@ Foodgram - «продуктовый помощник». На этом серви
 ## Алгоритм регистрации пользователей
 
 1. Пользователь отправляет POST-запрос для регистрации нового пользователя с параметрами email username first_name last_name password на эндпойнт /api/users/
-2. Пользователь отправляет POST-запрос со своими регистрационными данными email password на эндпоинт /api/token/login/ , в ответе на запрос ему приходит auth-token. 
+2. Пользователь отправляет POST-запрос со своими регистрационными данными email password на эндпоинт /api/token/login/ , в ответе на запрос ему приходит auth-token.
 
 ## Набор доступных эндпоинтов
 
  `api/docs/redoc` - Подробная документация по работе API.  
- `api/tags/` - Получение, списка тегов (GET). 
+ `api/tags/` - Получение, списка тегов (GET).
  `api/ingredients/` - Получение списка ингредиентов (GET).  
  `api/ingredients/` - Получение ингредиента с соответствующим id (GET).  
  `api/tags/{id}` - Получение тега с соответствующим id (GET).  
@@ -64,3 +60,7 @@ Foodgram - «продуктовый помощник». На этом серви
  `api/users/set_password/` - изменение собственного пароля (PATCH).  
  `api/users/{id}/subscribe/` - Подписаться на пользователя с соответствующим id или отписаться от него. (GET, DELETE).  
  `api/users/subscribe/subscriptions/` - Просмотр пользователей на которых подписан текущий пользователь. (GET).  
+
+## Ближайшие обновления
+
+Hастройка workflow

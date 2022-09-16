@@ -1,71 +1,97 @@
 from django.contrib import admin
 
+from .models import (Favorite, Ingredient, IngredientsInRecipe, Recipe,
+                     ShoppingCart, Tag)
 
-from .models import Favorite, Ingredient, Recipe, RecipeIngredients, \
-        ShoppingCart, Tag
 
-
-@admin.register(Tag)
-class TagsAdmin(admin.ModelAdmin):
+class TagAdmin(admin.ModelAdmin):
     list_display = (
-        'id',
+        'pk',
         'name',
         'color',
-        'slug',
+        'slug'
     )
-    search_fields = ('name',)
-    ordering = ('color',)
+    list_editable = ('color',)
+    search_fields = ('name', 'color', 'slug')
 
 
-@admin.register(Ingredient)
+admin.site.register(Tag, TagAdmin)
+
+
+class IngredientsInRecipeInline(admin.TabularInline):
+    model = Recipe.ingredients.through
+    extra = 1
+
+
+class IngredientsInRecipeAdmin(admin.ModelAdmin):
+    list_display = (
+        'pk',
+        'ingredient',
+        'recipe',
+        'amount'
+    )
+    search_fields = ('recipe__name', 'ingredient__name')
+
+
 class IngredientAdmin(admin.ModelAdmin):
     list_display = (
-        'id',
+        'pk',
         'name',
         'measurement_unit',
     )
-    search_fields = ('name',)
+    search_fields = ('measurement_unit',)
+    list_filter = ('measurement_unit',)
 
 
-@admin.register(RecipeIngredients)
-class RecipeIngredientsAdmin(admin.ModelAdmin):
-    list_display = (
-        'id',
-        'recipe',
-        'ingredient',
-        'amount',
-    )
-    list_filter = ('id', 'recipe', 'ingredient')
-
-
-@admin.register(Recipe)
 class RecipeAdmin(admin.ModelAdmin):
+    inlines = (IngredientsInRecipeInline,)
     list_display = (
-        'id',
+        'pk',
         'name',
-        'author',
-        'in_favorite',
+        'author'
     )
-    list_filter = ('name', 'author', 'tags',)
-    readonly_fields = ('in_favorite',)
+    search_fields = (
+        'name',
+        'author__username',
+        'author__email'
+    )
+    readonly_fields = ('is_favorited',)
 
-    def in_favorite(self, obj):
-        return obj.in_favorite.all().count()
+    def is_favorited(self, instance):
+        return instance.favorite_recipes.count()
 
 
-@admin.register(Favorite)
 class FavoriteAdmin(admin.ModelAdmin):
     list_display = (
-        'id',
+        'pk',
         'user',
-        'recipe',
+        'recipe'
+    )
+    search_fields = (
+        'user__username',
+        'user__email',
+        'recipe__name'
     )
 
 
-@admin.register(ShoppingCart)
 class ShoppingCartAdmin(admin.ModelAdmin):
     list_display = (
-        'id',
+        'pk',
         'user',
-        'recipe',
+        'recipe'
     )
+    search_fields = (
+        'user__username',
+        'user__email',
+        'recipe__name'
+    )
+
+
+admin.site.register(Ingredient, IngredientAdmin)
+admin.site.register(Recipe, RecipeAdmin)
+admin.site.register(Favorite, FavoriteAdmin)
+admin.site.register(ShoppingCart, ShoppingCartAdmin)
+admin.site.register(
+    IngredientsInRecipe,
+    IngredientsInRecipeAdmin
+)

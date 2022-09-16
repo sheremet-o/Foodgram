@@ -1,24 +1,29 @@
 from django.contrib import admin
 
-from .models import CustomUser, Subscription
+from .models import Subscription, User
 
 
-@admin.register(CustomUser)
-class CustomUserAdmin(admin.ModelAdmin):
+class UserAdmin(admin.ModelAdmin):
     list_display = (
         'pk',
         'username',
-        'email',
         'first_name',
         'last_name',
-        'role',
+        'email',
     )
-    list_filter = ('email', 'username')
-    search_fields = ('username',)
+    search_fields = ('username', 'email', 'last_name')
+    list_filter = ('username', 'email', 'first_name', 'last_name')
 
 
-@admin.register(Subscription)
 class SubscriptionAdmin(admin.ModelAdmin):
-    list_display = ('pk', 'user', 'author')
+    list_display = (
+        'pk',
+        'user',
+        'author'
+    )
     list_filter = ('user', 'author')
-    search_fields = ('author',)
+    search_fields = ('user__username', 'user__email')
+
+
+admin.site.register(User, UserAdmin)
+admin.site.register(Subscription, SubscriptionAdmin)
