@@ -3,15 +3,15 @@
 Адрес сайта  
 <http://158.160.4.225/>
 
-Администратор:
-email: foodgram@mail.ru
-login: foodgram
-password: foodgram
+Администратор:  
+email: foodgram@mail.ru  
+login: foodgram  
+password: foodgram  
 
-Обычный пользователь:
-email: user1.ru
-login: user1
-password: andreevuser1
+Обычный пользователь:  
+email: user1.ru  
+login: user1  
+password: andreevuser1  
 
 ## Описание
 
