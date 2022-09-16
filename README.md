@@ -9,7 +9,7 @@ login: foodgram
 password: foodgram  
 
 Обычный пользователь:  
-email: user1.ru  
+email: user1@ru  
 login: user1  
 password: andreevuser1  
 
