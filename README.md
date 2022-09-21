@@ -3,12 +3,7 @@
 Адрес сайта  
 <http://158.160.4.225/>
 
-Администратор:  
-email: foodgram@mail.ru  
-login: foodgram  
-password: foodgram  
-
-Обычный пользователь:  
+Тестовый пользователь:  
 email: user1@mail.ru  
 login: user1  
 password: andreevuser1  
@@ -75,7 +70,3 @@ Foodgram - «продуктовый помощник». На этом серви
  `api/users/set_password/` - изменение собственного пароля (PATCH).  
  `api/users/{id}/subscribe/` - Подписаться на пользователя с соответствующим id или отписаться от него. (GET, DELETE).  
  `api/users/subscribe/subscriptions/` - Просмотр пользователей на которых подписан текущий пользователь. (GET).  
-
-## Ближайшие обновления
-
-Hастройка workflow
